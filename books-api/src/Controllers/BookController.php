@@ -2,6 +2,7 @@
 namespace App\Controllers;
 
 use App\Repositories\BookRepository;
+use App\Validation\Validator;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -24,55 +25,67 @@ final class BookController
 
     public function create(Request $r, Response $s): Response {
         $body = (array)$r->getParsedBody();
-        $errors = $this->validate($body, true);
+        $auth = (array)$r->getAttribute('auth', []);   // ← get auth
+
+        $errors = (new Validator())
+            ->required('title', 'author', 'year')
+            ->field('title',  Validator::nonEmptyString(200), 'title must be 1-200 chars')
+            ->field('author', Validator::nonEmptyString(150), 'author must be 1-150 chars')
+            ->field('year',   Validator::intRange(1000, (int)date('Y')), 'year must be 1000..now')
+            ->field('genre',  Validator::nonEmptyString(80),  'genre must be ≤ 80 chars')
+            ->validate($body);
+
         if ($errors) return $this->json($s, ['errors' => $errors], 400);
-        $id = $this->books->create($body);
+
+        $id = $this->books->create($body, (int)($auth['sub'] ?? 0));  // ← pass owner
         return $this->json($s, ['message' => 'Book created', 'data' => $this->books->find($id)], 201)
             ->withHeader('Location', '/api/books/' . $id);
     }
 
     public function update(Request $r, Response $s, array $a): Response {
-        $id = (int)$a['id'];
+        $id   = (int)$a['id'];
         $book = $this->books->find($id);
         if (!$book) return $this->json($s, ['error' => 'not found'], 404);
-        $body = (array)$r->getParsedBody();
-        $errors = $this->validate($body, false);
+
+        // IDOR check ↓
+        $auth    = (array)$r->getAttribute('auth', []);
+        $isOwner = (int)$book['created_by'] === (int)($auth['sub'] ?? 0);
+        $isAdmin = ($auth['role'] ?? 'member') === 'admin';
+        if (!$isOwner && !$isAdmin)
+            return $this->json($s, ['error' => 'Forbidden'], 403);
+
+        $body   = (array)$r->getParsedBody();
+        $errors = (new Validator())
+            ->field('title',  Validator::nonEmptyString(200), 'title must be 1-200 chars')
+            ->field('author', Validator::nonEmptyString(150), 'author must be 1-150 chars')
+            ->field('year',   Validator::intRange(1000, (int)date('Y')), 'year must be 1000..now')
+            ->field('genre',  Validator::nonEmptyString(80),  'genre must be ≤ 80 chars')
+            ->validate($body, true);  // partial=true, no required fields on update
+
         if ($errors) return $this->json($s, ['errors' => $errors], 400);
         $this->books->update($id, $body);
         return $this->json($s, ['message' => 'Book updated', 'data' => $this->books->find($id)]);
     }
 
     public function delete(Request $r, Response $s, array $a): Response {
-    
         $auth = (array)$r->getAttribute('auth', []);
-
-        if (($auth['role'] ?? 'member') !== 'admin') {
+        if (($auth['role'] ?? 'member') !== 'admin')
             return $this->json($s, ['error' => 'Admins only'], 403);
-        }
 
-        $id = (int)$a['id'];
+        $id   = (int)$a['id'];
         $book = $this->books->find($id);
         if (!$book) return $this->json($s, ['error' => 'not found'], 404);
         $this->books->delete($id);
         return $this->json($s, ['message' => 'Book deleted', 'data' => $book]);
     }
 
-    private function validate(array $b, bool $requireAll): array {
-        $errors = [];
-        $rules = [
-            'title'  => fn($v) => is_string($v) && trim($v) !== '',
-            'author' => fn($v) => is_string($v) && trim($v) !== '',
-            'year'   => fn($v) => is_numeric($v) && (int)$v >= 1000 && (int)$v <= (int)date('Y'),
-        ];
-        foreach ($rules as $f => $check) {
-            if ($requireAll && !array_key_exists($f, $b)) { $errors[$f] = "$f is required"; continue; }
-            if (array_key_exists($f, $b) && !$check($b[$f])) $errors[$f] = "$f is invalid";
-        }
-        return $errors;
-    }
-
-    private function json(Response $r, mixed $data, int $code = 200): Response {
-        $r->getBody()->write(json_encode($data, JSON_PRETTY_PRINT));
-        return $r->withHeader('Content-Type', 'application/json; charset=utf-8')->withStatus($code);
+    private function json(Response $r, $data, int $status = 200): Response {
+        $r->getBody()->write(json_encode(
+            $data,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
+            | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+        ));
+        return $r->withHeader('Content-Type', 'application/json; charset=utf-8')
+                ->withStatus($status);
     }
 }

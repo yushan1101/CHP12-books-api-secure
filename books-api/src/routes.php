@@ -6,6 +6,7 @@ use App\Controllers\AuthController;
 use App\Controllers\BookController;
 use App\Database;
 use App\Middleware\AuthMiddleware;
+use App\Middleware\RateLimit;                    // ← add this
 use App\Repositories\BookRepository;
 use App\Repositories\UserRepository;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -21,48 +22,32 @@ return function (App $app): void {
     $authCtrl = new AuthController(new UserRepository($pdo), $jwt);
     $auth     = new AuthMiddleware($jwt);
 
+    $loginMw = new RateLimit(                   // ← add this block
+        (int)($_ENV['LOGIN_RATE_LIMIT']     ?? 5),
+        (int)($_ENV['LOGIN_WINDOW_SECONDS'] ?? 60),
+        'login'
+    );
+
     // Public — no token required.
     $app->get('/', function (Request $r, Response $s) {
-        $s->getBody()->write(json_encode([
-            'name'    => 'Books REST API',
-            'version' => '3.0.0 (JWT auth)',
-            'endpoints' => [
-                'public' => [
-                    'POST /auth/register',
-                    'POST /auth/login',
-                    'GET  /api/books',
-                    'GET  /api/books/{id}',
-                ],
-                'protected' => [
-                    'GET    /auth/me',
-                    'POST   /api/books',
-                    'PUT    /api/books/{id}',
-                    'DELETE /api/books/{id}   (admin only)',
-                ],
-            ],
-        ]));
-        return $s->withHeader('Content-Type', 'application/json');
+        // ... unchanged ...
     });
 
     // -- Auth routes -------------------------------------------------
     $app->post('/auth/register', [$authCtrl, 'register']);
-    $app->post('/auth/login',    [$authCtrl, 'login']);
+    $app->post('/auth/login',    [$authCtrl, 'login'])->add($loginMw);  // ← add ->add($loginMw)
 
-    // /auth/me requires a valid JWT.
     $app->get('/auth/me', [$authCtrl, 'me'])->add($auth);
 
     // -- Books routes ------------------------------------------------
-    // Read endpoints stay public (anyone can browse the catalogue).
     $app->get('/api/books',       [$bookCtrl, 'index']);
     $app->get('/api/books/{id}',  [$bookCtrl, 'show']);
 
-    // Write endpoints require a JWT.
     $app->group('/api/books', function ($g) use ($bookCtrl) {
         $g->post  ('',        [$bookCtrl, 'create']);
         $g->put   ('/{id}',   [$bookCtrl, 'update']);
-        $g->delete('/{id}',   [$bookCtrl, 'delete']);   // controller also enforces role=admin
+        $g->delete('/{id}',   [$bookCtrl, 'delete']);
     })->add($auth);
 
-    // CORS pre-flight catch-all.
     $app->options('/{routes:.+}', fn(Request $r, Response $s) => $s);
 };

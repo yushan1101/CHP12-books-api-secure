@@ -84,12 +84,13 @@ final class AuthController
             : $this->json($s, ['error' => 'Not found'], 404);
     }
 
-    private function json(Response $s, $d, int $c = 200): Response
-    {
-        $s->getBody()->write(json_encode($d, JSON_PRETTY_PRINT));
-
-        return $s
-            ->withHeader('Content-Type', 'application/json')
-            ->withStatus($c);
+    private function json(Response $r, $data, int $status = 200): Response {
+        $r->getBody()->write(json_encode(
+            $data,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
+            | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+        ));
+        return $r->withHeader('Content-Type', 'application/json; charset=utf-8')
+                ->withStatus($status);
     }
 }

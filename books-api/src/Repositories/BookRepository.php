@@ -29,14 +29,15 @@ final class BookRepository
         return $row === false ? null : $row;
     }
 
-    public function create(array $b): int {
-        $sql = 'INSERT INTO books (title, author, year, genre)
-                VALUES (:title, :author, :year, :genre)';
+    public function create(array $b, int $createdBy): int {
+        $sql = 'INSERT INTO books (title, author, year, genre, created_by)
+                VALUES (:title, :author, :year, :genre, :owner)';
         $this->pdo->prepare($sql)->execute([
             ':title'  => trim($b['title']),
             ':author' => trim($b['author']),
             ':year'   => (int)$b['year'],
             ':genre'  => trim($b['genre'] ?? 'Uncategorised'),
+            ':owner'  => $createdBy,
         ]);
         return (int)$this->pdo->lastInsertId();
     }
