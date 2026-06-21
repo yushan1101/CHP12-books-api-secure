@@ -1,9 +1,12 @@
 /**
- * Pinia auth store — login / register / logout, token persistence,
- * `isAuthenticated` and `isAdmin` getters used across the UI.
+ * Pinia auth store — Chapter 12.
  *
- * Bare axios is used here (not api/client.js) to avoid a circular
- * import: api/client.js imports useAuth().
+ * Identical to Chapter 11 except the register action passes through any
+ * field-level validation errors returned by the hardened backend
+ * (password must now be ≥ 8 characters; name, email rules are also stricter).
+ *
+ * Bare axios is used here (not api/client.js) to avoid a circular import:
+ * api/client.js imports useAuth().
  */
 
 import { defineStore } from 'pinia';
@@ -32,8 +35,9 @@ export const useAuth = defineStore('auth', {
     },
 
     async register(name, email, password) {
+      // Throws on 400 (validation) or 409 (duplicate email); caller handles.
       await axios.post(`${baseURL}/auth/register`, { name, email, password });
-      await this.login(email, password);    // auto-login after register
+      await this.login(email, password);
     },
 
     logout() {

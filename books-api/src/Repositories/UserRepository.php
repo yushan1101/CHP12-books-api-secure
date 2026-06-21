@@ -23,7 +23,7 @@ final class UserRepository
     public function findById(int $id): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, name, email, role FROM users WHERE id = :id'
+            'SELECT id, name, email, role, created_at FROM users WHERE id = :id'
         );
 
         $stmt->execute([':id' => $id]);
@@ -32,7 +32,6 @@ final class UserRepository
 
         return $row === false ? null : $row;
     }
-
     public function create(
         string $n,
         string $e,

@@ -27,7 +27,7 @@ header button {
   padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;
 }
 header .me { font-size: 13px; opacity: .9; }
-header .badge { background: var(--accent); padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+header .badge { background: var(--accent); padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #1E293B; }
 
 main { max-width: 920px; margin: 0 auto; padding: 24px; }
 
@@ -41,16 +41,19 @@ button.danger  { background: var(--danger);  color: #fff; border-color: var(--da
 button:disabled { opacity: .5; cursor: not-allowed; }
 
 input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; background: #fff; color: var(--text); }
-label { display: block; margin: 12px 0 6px; font-size: 13px; color: var(--muted); }
+input.field-error { border-color: var(--danger); }
+label { display: block; margin: 12px 0 4px; font-size: 13px; color: var(--muted); }
+.field-msg { font-size: 12px; color: var(--danger); margin-top: 4px; }
 
 .book { display: grid; grid-template-columns: 1fr auto; align-items: center; border-bottom: 1px solid var(--border); padding: 12px 0; }
 .book:last-child { border-bottom: 0; }
 .book .meta { color: var(--muted); font-size: 13px; }
-.book .actions { display: flex; gap: 6px; }
+.book .actions { display: flex; gap: 6px; align-items: center; }
 
-.tag       { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #E0F2FE; color: var(--primary); margin-left: 6px; font-weight: 600; }
-.tag.admin { background: #FEF3C7; color: #92400E; }
+.tag        { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #E0F2FE; color: var(--primary); margin-left: 6px; font-weight: 600; }
+.tag.admin  { background: #FEF3C7; color: #92400E; }
 .tag.member { background: #DBEAFE; color: #1E3A8A; }
+.tag.mine   { background: #D1FAE5; color: #065F46; }
 
 .alert.error { background: #FEE2E2; color: var(--danger); padding: 10px 14px; border-radius: 4px; margin-bottom: 12px; }
 .alert.ok    { background: #D1FAE5; color: #065F46;    padding: 10px 14px; border-radius: 4px; margin-bottom: 12px; }
