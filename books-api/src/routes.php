@@ -30,7 +30,25 @@ return function (App $app): void {
 
     // Public — no token required.
     $app->get('/', function (Request $r, Response $s) {
-        // ... unchanged ...
+        $s->getBody()->write(json_encode([
+            'name'    => 'Books REST API',
+            'version' => '3.0.0 (JWT auth)',
+            'endpoints' => [
+                'public' => [
+                    'POST /auth/register',
+                    'POST /auth/login',
+                    'GET  /api/books',
+                    'GET  /api/books/{id}',
+                ],
+                'protected' => [
+                    'GET    /auth/me',
+                    'POST   /api/books',
+                    'PUT    /api/books/{id}',
+                    'DELETE /api/books/{id}   (admin only)',
+                ],
+            ],
+        ]));
+        return $s->withHeader('Content-Type', 'application/json');
     });
 
     // -- Auth routes -------------------------------------------------
